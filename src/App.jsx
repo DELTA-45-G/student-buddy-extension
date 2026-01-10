@@ -2,45 +2,99 @@ import { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
-  // --- TIMER STATE ---
-  // CHANGE 1: Set default state to 30 * 60 (1800 seconds)
+  // --- STATE ---
   const [timeLeft, setTimeLeft] = useState(30 * 60); 
-  const [initialTime, setInitialTime] = useState(30 * 60); 
   const [isActive, setIsActive] = useState(false);
-
-  // --- TASK STATE ---
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
 
+  // --- 1. INITIAL LOAD (Check Storage) ---
   useEffect(() => {
+    // Load Tasks
     if (typeof chrome !== 'undefined' && chrome.storage) {
       chrome.storage.sync.get(['tasks'], (result) => {
         if (result.tasks) setTasks(result.tasks);
       });
+
+      // Load Timer State
+      chrome.storage.local.get(['timerState'], (result) => {
+        const state = result.timerState;
+        if (state) {
+          if (state.isRunning) {
+            // Calculate time left based on the saved 'endTime'
+            const now = Date.now();
+            const remaining = Math.ceil((state.endTime - now) / 1000);
+            
+            if (remaining > 0) {
+              setTimeLeft(remaining);
+              setIsActive(true);
+            } else {
+              // Timer finished while closed
+              setTimeLeft(0);
+              setIsActive(false);
+              chrome.storage.local.remove('timerState');
+            }
+          } else {
+            // It was paused, just load the saved remaining time
+            setTimeLeft(state.remaining);
+            setIsActive(false);
+          }
+        }
+      });
     }
   }, []);
 
+  // --- 2. THE TICKER (Runs only when open) ---
   useEffect(() => {
     let interval = null;
     if (isActive && timeLeft > 0) {
       interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
+        // We check storage to stay in sync
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            // Time is up!
+            chrome.storage.local.remove('timerState');
+            setIsActive(false);
+            // Optional: Send a notification here if we added permissions later
+            return 0;
+          }
+          return prev - 1;
+        });
       }, 1000);
-    } else if (timeLeft === 0) {
-      setIsActive(false);
-      alert("Time's up! Great work.");
     }
     return () => clearInterval(interval);
-  }, [isActive, timeLeft]);
+  }, [isActive]);
+
+  // --- 3. TIMER CONTROLS ---
+  const toggleTimer = () => {
+    if (isActive) {
+      // PAUSE: Save the specific remaining time
+      const state = { isRunning: false, remaining: timeLeft, endTime: null };
+      chrome.storage.local.set({ timerState: state });
+      setIsActive(false);
+    } else {
+      // START: Calculate the specific End Time (Now + Remaining Seconds)
+      const targetTime = Date.now() + (timeLeft * 1000);
+      const state = { isRunning: true, remaining: timeLeft, endTime: targetTime };
+      chrome.storage.local.set({ timerState: state });
+      setIsActive(true);
+    }
+  };
+
+  const resetTimer = () => {
+    chrome.storage.local.remove('timerState');
+    setIsActive(false);
+    setTimeLeft(30 * 60); // Reset to default 30 mins
+  };
 
   const handleTimeChange = (e) => {
     const minutes = parseInt(e.target.value);
-    const seconds = minutes * 60;
-    setInitialTime(seconds);
-    setTimeLeft(seconds);
+    setTimeLeft(minutes * 60);
     setIsActive(false);
+    chrome.storage.local.remove('timerState'); // Clear any saved timer
   };
 
+  // --- TASK LOGIC (Same as before) ---
   const saveTasksToStorage = (updatedTasks) => {
     setTasks(updatedTasks);
     if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -73,33 +127,28 @@ function App() {
       <div className="card">
         <h3>Focus Timer</h3>
         
-        {/* CHANGE 2: Moved 'defaultValue' to 30 */}
         <select 
           onChange={handleTimeChange} 
           disabled={isActive} 
-          defaultValue="30" 
+          defaultValue="30"
           style={{marginBottom: '10px', padding: '5px'}}
         >
           <option value="5">5 Minutes</option>
-          <option value="10">10 Minutes</option>
           <option value="15">15 Minutes</option>
           <option value="25">25 Minutes</option>
           <option value="30">30 Minutes (Default)</option>
           <option value="45">45 Minutes</option>
-          <option value="60">60 Minutes (1 Hour)</option>
-          <option value="90">90 Minutes (1.5 Hours)</option>
-          <option value="120">120 Minutes (2 Hours)</option>
-          <option value="150">150 Minutes (2.5 Hours)</option>
-          <option value="180">180 Minutes (3 Hours)</option>
+          <option value="60">60 Minutes</option>
         </select>
 
         <div className="timer-display">{formatTime(timeLeft)}</div>
         
         <div className="button-group">
-          <button onClick={() => setIsActive(!isActive)}>
+          {/* Changed logic to use toggleTimer */}
+          <button onClick={toggleTimer}>
             {isActive ? 'Pause' : 'Start'}
           </button>
-          <button className="reset-btn" onClick={() => { setIsActive(false); setTimeLeft(initialTime); }}>
+          <button className="reset-btn" onClick={resetTimer}>
             Reset
           </button>
         </div>

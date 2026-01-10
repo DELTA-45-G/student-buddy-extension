@@ -3,15 +3,15 @@ import './App.css';
 
 function App() {
   // --- TIMER STATE ---
-  const [timeLeft, setTimeLeft] = useState(25 * 60); 
-  const [initialTime, setInitialTime] = useState(25 * 60); // Store the selected time
+  // CHANGE 1: Set default state to 30 * 60 (1800 seconds)
+  const [timeLeft, setTimeLeft] = useState(30 * 60); 
+  const [initialTime, setInitialTime] = useState(30 * 60); 
   const [isActive, setIsActive] = useState(false);
 
   // --- TASK STATE ---
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
 
-  // Load tasks
   useEffect(() => {
     if (typeof chrome !== 'undefined' && chrome.storage) {
       chrome.storage.sync.get(['tasks'], (result) => {
@@ -20,7 +20,6 @@ function App() {
     }
   }, []);
 
-  // Timer Logic
   useEffect(() => {
     let interval = null;
     if (isActive && timeLeft > 0) {
@@ -34,16 +33,14 @@ function App() {
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
 
-  // Handle Time Selection
   const handleTimeChange = (e) => {
     const minutes = parseInt(e.target.value);
     const seconds = minutes * 60;
     setInitialTime(seconds);
     setTimeLeft(seconds);
-    setIsActive(false); // Stop timer if user changes time
+    setIsActive(false);
   };
 
-  // Task Helpers
   const saveTasksToStorage = (updatedTasks) => {
     setTasks(updatedTasks);
     if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -73,17 +70,21 @@ function App() {
     <div className="container">
       <h2>🎓 Student Buddy</h2>
       
-      {/* Timer Section */}
       <div className="card">
         <h3>Focus Timer</h3>
         
-        {/* New Dropdown for Time Selection */}
-        <select onChange={handleTimeChange} disabled={isActive} style={{marginBottom: '10px', padding: '5px'}}>
+        {/* CHANGE 2: Moved 'defaultValue' to 30 */}
+        <select 
+          onChange={handleTimeChange} 
+          disabled={isActive} 
+          defaultValue="30" 
+          style={{marginBottom: '10px', padding: '5px'}}
+        >
           <option value="5">5 Minutes</option>
           <option value="10">10 Minutes</option>
           <option value="15">15 Minutes</option>
-          <option value="25" selected>25 Minutes (Default)</option>
-          <option value="30">30 Minutes</option>
+          <option value="25">25 Minutes</option>
+          <option value="30">30 Minutes (Default)</option>
           <option value="45">45 Minutes</option>
           <option value="60">60 Minutes (1 Hour)</option>
           <option value="90">90 Minutes (1.5 Hours)</option>
@@ -104,7 +105,6 @@ function App() {
         </div>
       </div>
 
-      {/* Task Section */}
       <div className="card">
         <h3>Tasks</h3>
         <div className="input-group">

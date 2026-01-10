@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Student Buddy",
+  "version": "1.0",
+  "description": "A focus timer and task manager for students.",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Open Student Buddy"
+  },
+  "permissions": ["storage"]
+}

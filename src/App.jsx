@@ -3,25 +3,24 @@ import './App.css';
 
 function App() {
   // --- TIMER STATE ---
-  const [timeLeft, setTimeLeft] = useState(25 * 60); // 25 minutes
+  const [timeLeft, setTimeLeft] = useState(25 * 60); 
+  const [initialTime, setInitialTime] = useState(25 * 60); // Store the selected time
   const [isActive, setIsActive] = useState(false);
 
   // --- TASK STATE ---
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
 
-  // 1. Load tasks from Chrome Storage when the app starts
+  // Load tasks
   useEffect(() => {
     if (typeof chrome !== 'undefined' && chrome.storage) {
       chrome.storage.sync.get(['tasks'], (result) => {
-        if (result.tasks) {
-          setTasks(result.tasks);
-        }
+        if (result.tasks) setTasks(result.tasks);
       });
     }
   }, []);
 
-  // 2. Timer Logic (Counts down every second)
+  // Timer Logic
   useEffect(() => {
     let interval = null;
     if (isActive && timeLeft > 0) {
@@ -30,15 +29,23 @@ function App() {
       }, 1000);
     } else if (timeLeft === 0) {
       setIsActive(false);
-      alert("Time to take a break!");
+      alert("Time's up! Great work.");
     }
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
 
-  // 3. Helper Functions
+  // Handle Time Selection
+  const handleTimeChange = (e) => {
+    const minutes = parseInt(e.target.value);
+    const seconds = minutes * 60;
+    setInitialTime(seconds);
+    setTimeLeft(seconds);
+    setIsActive(false); // Stop timer if user changes time
+  };
+
+  // Task Helpers
   const saveTasksToStorage = (updatedTasks) => {
     setTasks(updatedTasks);
-    // Only save if we are in the extension environment
     if (typeof chrome !== 'undefined' && chrome.storage) {
       chrome.storage.sync.set({ tasks: updatedTasks });
     }
@@ -69,12 +76,29 @@ function App() {
       {/* Timer Section */}
       <div className="card">
         <h3>Focus Timer</h3>
+        
+        {/* New Dropdown for Time Selection */}
+        <select onChange={handleTimeChange} disabled={isActive} style={{marginBottom: '10px', padding: '5px'}}>
+          <option value="5">5 Minutes</option>
+          <option value="10">10 Minutes</option>
+          <option value="15">15 Minutes</option>
+          <option value="25" selected>25 Minutes (Default)</option>
+          <option value="30">30 Minutes</option>
+          <option value="45">45 Minutes</option>
+          <option value="60">60 Minutes (1 Hour)</option>
+          <option value="90">90 Minutes (1.5 Hours)</option>
+          <option value="120">120 Minutes (2 Hours)</option>
+          <option value="150">150 Minutes (2.5 Hours)</option>
+          <option value="180">180 Minutes (3 Hours)</option>
+        </select>
+
         <div className="timer-display">{formatTime(timeLeft)}</div>
+        
         <div className="button-group">
           <button onClick={() => setIsActive(!isActive)}>
             {isActive ? 'Pause' : 'Start'}
           </button>
-          <button className="reset-btn" onClick={() => { setIsActive(false); setTimeLeft(25*60); }}>
+          <button className="reset-btn" onClick={() => { setIsActive(false); setTimeLeft(initialTime); }}>
             Reset
           </button>
         </div>

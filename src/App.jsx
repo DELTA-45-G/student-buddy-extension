@@ -122,9 +122,9 @@ function App() {
     if (typeof chrome !== 'undefined' && chrome.notifications) {
       chrome.notifications.create({
         type: "basic",
-        iconUrl: "vite.svg", 
+        iconUrl: chrome.runtime.getURL("icon.png"), 
         title: "Test Notification",
-        message: "If you see this, it works!",
+        message: "It works! 🔔",
         priority: 2
       });
     } else {

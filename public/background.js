@@ -6,7 +6,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     // Show the system notification
     chrome.notifications.create({
       type: "basic",
-      iconUrl: "vite.svg", 
+      iconUrl: chrome.runtime.getURL("icon.png"), 
       title: "Time's Up! 🎓",
       message: "Great job! Take a short break.",
       priority: 2,

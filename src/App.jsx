@@ -15,12 +15,12 @@ function App() {
         if (result.tasks) setTasks(result.tasks);
       });
 
-      // Check if an alarm is already running
-      // Check if an alarm is already running
+      // Check Timer State
       chrome.storage.local.get(['timerState'], (result) => {
         const state = result.timerState;
-        if (state) { // Check if ANY state exists
+        if (state) {
           if (state.isRunning) {
+            // Calculate remaining time if running
             const now = Date.now();
             const remaining = Math.ceil((state.endTime - now) / 1000);
             
@@ -32,8 +32,7 @@ function App() {
               setTimeLeft(0);
             }
           } else {
-            // --- THIS WAS MISSING ---
-            // If it was paused, load the saved remaining time
+            // Load saved time if paused
             setTimeLeft(state.remaining);
             setIsActive(false);
           }
@@ -42,7 +41,7 @@ function App() {
     }
   }, []);
 
-  // --- 2. LIVE COUNTDOWN (Visual Only) ---
+  // --- 2. LIVE COUNTDOWN ---
   useEffect(() => {
     let interval = null;
     if (isActive && timeLeft > 0) {
@@ -61,14 +60,11 @@ function App() {
 
   // --- 3. CONTROLS ---
   const startTimer = () => {
-    // 1. Calculate when the timer ends
     const targetTime = Date.now() + (timeLeft * 1000);
     
-    // 2. Set the Chrome Alarm (this triggers the notification)
-    // We convert seconds to minutes for the API
+    // Set Alarm & Save State
     chrome.alarms.create('studyTimer', { when: targetTime });
 
-    // 3. Save state
     const state = { isRunning: true, endTime: targetTime };
     chrome.storage.local.set({ timerState: state });
     
@@ -76,8 +72,8 @@ function App() {
   };
 
   const stopTimer = () => {
-    chrome.alarms.clear('studyTimer'); // Kill the alarm
-    chrome.storage.local.set({ timerState: { isRunning: false, remaining: timeLeft } }); // Save where we paused
+    chrome.alarms.clear('studyTimer'); 
+    chrome.storage.local.set({ timerState: { isRunning: false, remaining: timeLeft } });
     setIsActive(false);
   };
 
@@ -96,55 +92,57 @@ function App() {
     chrome.storage.local.remove('timerState');
   };
 
-  // --- TASKS (Unchanged) ---
+  // --- TASKS ---
   const saveTasksToStorage = (updatedTasks) => {
     setTasks(updatedTasks);
     if (typeof chrome !== 'undefined' && chrome.storage) {
       chrome.storage.sync.set({ tasks: updatedTasks });
     }
   };
+
   const addTask = () => {
     if (newTask.trim() === '') return;
     const updated = [...tasks, newTask];
     saveTasksToStorage(updated);
     setNewTask('');
   };
+
   const removeTask = (index) => {
     const updated = tasks.filter((_, i) => i !== index);
     saveTasksToStorage(updated);
   };
+
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
- const testNotification = () => {
-    if (typeof chrome !== 'undefined' && chrome.notifications) {
-      chrome.notifications.create({
-        type: "basic",
-        iconUrl: chrome.runtime.getURL("icon.png"), 
-        title: "Test Notification",
-        message: "It works! 🔔",
-        priority: 2
-      });
-    } else {
-      alert("Notifications not available (are you running as an extension?)");
-    }
-  };
+
   return (
     <div className="container">
       <h2>🎓 Student Buddy</h2>
+      
       <div className="card">
         <h3>Focus Timer</h3>
-        <select onChange={handleTimeChange} disabled={isActive} defaultValue="30" style={{marginBottom: '10px', padding: '5px'}}>
-          <option value="1">1 Minute (Test)</option>
+        <select 
+          onChange={handleTimeChange} 
+          disabled={isActive} 
+          defaultValue="30" 
+          style={{marginBottom: '10px', padding: '5px'}}
+        >
           <option value="5">5 Minutes</option>
           <option value="15">15 Minutes</option>
           <option value="30">30 Minutes (Default)</option>
           <option value="45">45 Minutes</option>
-          <option value="60">60 Minutes</option>
+          <option value="60">60 Minutes (1 Hour)</option>
+          <option value="90">90 Minutes (1.5 Hours)</option>
+          <option value="120">120 Minutes (2 Hours)</option>
+          <option value="150">150 Minutes (2.5 Hours)</option>
+          <option value="180">180 Minutes (3 Hours)</option>
         </select>
+
         <div className="timer-display">{formatTime(timeLeft)}</div>
+        
         <div className="button-group">
           {isActive ? (
              <button onClick={stopTimer}>Pause</button>
@@ -152,15 +150,18 @@ function App() {
              <button onClick={startTimer}>Start</button>
           )}
           <button className="reset-btn" onClick={resetTimer}>Reset</button>
-          <button onClick={testNotification} style={{marginTop: '10px', fontSize: '10px'}}>
-          🔔 Test Notification
-          </button>
         </div>
       </div>
+
       <div className="card">
         <h3>Tasks</h3>
         <div className="input-group">
-          <input type="text" placeholder="Add a new task..." value={newTask} onChange={(e) => setNewTask(e.target.value)} />
+          <input 
+            type="text" 
+            placeholder="Add a new task..." 
+            value={newTask} 
+            onChange={(e) => setNewTask(e.target.value)} 
+          />
           <button onClick={addTask}>+</button>
         </div>
         <ul>

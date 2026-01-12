@@ -16,18 +16,26 @@ function App() {
       });
 
       // Check if an alarm is already running
+      // Check if an alarm is already running
       chrome.storage.local.get(['timerState'], (result) => {
         const state = result.timerState;
-        if (state && state.isRunning) {
-          const now = Date.now();
-          const remaining = Math.ceil((state.endTime - now) / 1000);
-          
-          if (remaining > 0) {
-            setTimeLeft(remaining);
-            setIsActive(true);
+        if (state) { // Check if ANY state exists
+          if (state.isRunning) {
+            const now = Date.now();
+            const remaining = Math.ceil((state.endTime - now) / 1000);
+            
+            if (remaining > 0) {
+              setTimeLeft(remaining);
+              setIsActive(true);
+            } else {
+              setIsActive(false);
+              setTimeLeft(0);
+            }
           } else {
+            // --- THIS WAS MISSING ---
+            // If it was paused, load the saved remaining time
+            setTimeLeft(state.remaining);
             setIsActive(false);
-            setTimeLeft(0);
           }
         }
       });
@@ -110,7 +118,19 @@ function App() {
     const s = seconds % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
-
+ const testNotification = () => {
+    if (typeof chrome !== 'undefined' && chrome.notifications) {
+      chrome.notifications.create({
+        type: "basic",
+        iconUrl: "vite.svg", 
+        title: "Test Notification",
+        message: "If you see this, it works!",
+        priority: 2
+      });
+    } else {
+      alert("Notifications not available (are you running as an extension?)");
+    }
+  };
   return (
     <div className="container">
       <h2>🎓 Student Buddy</h2>
@@ -132,6 +152,9 @@ function App() {
              <button onClick={startTimer}>Start</button>
           )}
           <button className="reset-btn" onClick={resetTimer}>Reset</button>
+          <button onClick={testNotification} style={{marginTop: '10px', fontSize: '10px'}}>
+          🔔 Test Notification
+          </button>
         </div>
       </div>
       <div className="card">
